@@ -15,3 +15,13 @@ model User {
    @@map("user")
 }
 
+// The fresh new model
+model Task {
+  id         Int      @id @default(autoincrement())
+  title      String
+  assignedTo String
+  status     String
+  createdAt  DateTime @default(now()) // Keep this, it helps sort tasks by newest
+
+  @@map("tasks")
+}
