@@ -7,21 +7,144 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// 1. Users Table
 model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
-  password String
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  status    Int      @default(1) // Assuming 1=active
+  createdOn DateTime @default(now()) @map("created_on")
+  updatedOn DateTime @updatedAt @map("updated_on")
 
-   @@map("user")
+  // Relations
+  ownedProjects     Project[]     @relation("ProjectOwner")
+  projectMemberships ProjectUser[]
+  
+  // Auditing Relations (Tracking who created what)
+  projectsCreated   Project[]     @relation("ProjectCreatedBy")
+  projectsUpdated   Project[]     @relation("ProjectUpdatedBy")
+  tasksAssigned     Task[]        @relation("TaskAssignedTo")
+  tasksCreated      Task[]        @relation("TaskCreatedBy")
+  tasksUpdated      Task[]        @relation("TaskUpdatedBy")
+
+  @@map("users")
 }
 
-// The fresh new model
+// 2. Projects Table
+model Project {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String?  @db.Text
+  status       Int      @default(1)
+  
+  // Foreign Keys
+  projectOwnerId Int    @map("project_owner")
+  createdById    Int    @map("created_by")
+  updatedById    Int?   @map("updated_by")
+  
+  createdOn    DateTime @default(now()) @map("created_on")
+  updatedOn    DateTime @updatedAt @map("updated_on")
+
+  // Relations
+  owner        User          @relation("ProjectOwner", fields: [projectOwnerId], references: [id])
+  createdBy    User          @relation("ProjectCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User?         @relation("ProjectUpdatedBy", fields: [updatedById], references: [id])
+  
+  members      ProjectUser[]
+  tasks        Task[]
+
+  @@map("projects")
+}
+
+// 3. Project Roles (Lookup Table)
+model ProjectRole {
+  id          Int     @id @default(autoincrement())
+  role        String  // Admin, User, Viewer
+  description String?
+  status      Int     @default(1)
+
+  projectUsers ProjectUser[]
+
+  @@map("project_roles")
+}
+
+// 4. Project Users (Many-to-Many Junction)
+model ProjectUser {
+  id          Int      @id @default(autoincrement())
+  projectId   Int      @map("project_id")
+  userId      Int      @map("user_id")
+  roleId      Int      @map("role")
+  status      Int      @default(1)
+  createdOn   DateTime @default(now()) @map("created_on")
+  updatedOn   DateTime @updatedAt @map("updated_on")
+
+  project     Project     @relation(fields: [projectId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+  role        ProjectRole @relation(fields: [roleId], references: [id])
+
+  @@map("project_users")
+}
+
+// 5. Lookup Tables for Tasks
+model TaskType {
+  id          Int     @id @default(autoincrement())
+  type        String  // Epic, Story, Task, Sub-task
+  description String?
+  status      Int     @default(1)
+  tasks       Task[]
+
+  @@map("task_type")
+}
+
+model TaskPriority {
+  id          Int     @id @default(autoincrement())
+  priority    String  // Lower, Medium, High, Highest
+  description String?
+  status      Int     @default(1)
+  tasks       Task[]
+
+  @@map("task_priority")
+}
+
+model TaskStatus {
+  id          Int     @id @default(autoincrement())
+  status      String  // To Do, In Progress, Blocked, Cancelled, Done
+  description String?
+  statusFlag  Int     @default(1) @map("row_status")  // renamed to avoid conflict with string 'status'
+  tasks       Task[]
+
+  @@map("task_status")
+}
+
+// 6. Tasks Table (The core table)
 model Task {
-  id         Int      @id @default(autoincrement())
-  title      String
-  assignedTo String
-  status     String
-  createdAt  DateTime @default(now()) // Keep this, it helps sort tasks by newest
+  id           Int      @id @default(autoincrement())
+  summary      String
+  description  String?  @db.Text
+  dueDate      DateTime? @map("due_date")
+  
+  // IDs
+  typeId       Int      @map("type")
+  projectId    Int      @map("project_id")
+  assignedToId Int?     @map("assigned_to")
+  priorityId   Int      @map("priority")
+  statusId     Int      @map("status")
+  createdById  Int      @map("created_by")
+  updatedById  Int?     @map("updated_by")
+
+  createdOn    DateTime @default(now()) @map("created_on")
+  updatedOn    DateTime @updatedAt @map("updated_on")
+
+  // Relations
+  project      Project      @relation(fields: [projectId], references: [id])
+  taskType     TaskType     @relation(fields: [typeId], references: [id])
+  taskPriority TaskPriority @relation(fields: [priorityId], references: [id])
+  taskStatus   TaskStatus   @relation(fields: [statusId], references: [id])
+  
+  assignedTo   User?        @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+  createdBy    User         @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User?        @relation("TaskUpdatedBy", fields: [updatedById], references: [id])
 
   @@map("tasks")
 }

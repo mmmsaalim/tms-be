@@ -5,36 +5,31 @@ import { PrismaService } from 'src/prisma.service';
 export class TasksService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: any) {
+  // Create Task
+  async create(userId: number, data: any) {
     return this.prisma.task.create({
       data: {
-        title: data.title,
-        assignedTo: data.assignedTo,
-        status: data.status,
-      },
-    });
-  }
-
-  async findAll() {
-    return this.prisma.task.findMany({
-      orderBy: { createdAt: 'desc' } // Sorts by newest first
-    });
-  }
-
-  async update(id: number, data: any) {
-    return this.prisma.task.update({
-      where: { id: Number(id) },
-      data: {
-        title: data.title,
-        assignedTo: data.assignedTo,
-        status: data.status,
+        summary: data.summary,
+        description: data.description,
+        projectId: data.projectId, 
+        
+        typeId: data.typeId || 3,      
+        priorityId: data.priorityId || 2, 
+        statusId: data.statusId || 1,    
+        
+        assignedToId: userId, 
+        createdById: userId,
       },
     });
   }
 
   async remove(id: number) {
     return this.prisma.task.delete({
-      where: { id: Number(id) },
+      where: { id },
     });
+  }
+
+  async findAll() {
+    return this.prisma.task.findMany();
   }
 }
