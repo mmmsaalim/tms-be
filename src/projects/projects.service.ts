@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
+import { CreateProjectDto } from './dto/create-project.dto'; 
+import { UpdateProjectDto } from './dto/update-project.dto'; 
+
 @Injectable()
 export class ProjectsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
-  // 1. Create a Project
-  async create(userId: number, data: any) {
+  async create(userId: number, data: CreateProjectDto) {
     return this.prisma.project.create({
       data: {
         title: data.title,
@@ -13,45 +15,56 @@ export class ProjectsService {
         projectOwnerId: userId,
         createdById: userId,
         status: 1,
+        createdOn: new Date(),
       },
     });
   }
 
-  // 2. Get All Projects (For the dashboard)
   async findAll() {
     return this.prisma.project.findMany({
       orderBy: { createdOn: 'desc' },
       include: {
-        _count: { select: { tasks: true } } // Include task count for the UI
+        _count: { select: { tasks: true } }
       }
     });
   }
 
-  // 3. Get Tasks for a specific Project
-  // This flattens the data so the Frontend receives "In Progress" instead of { taskStatus: { status: "In Progress" } }
   async getTasksByProject(projectId: number) {
     const tasks = await this.prisma.task.findMany({
       where: { projectId: projectId },
-      include: {
-        taskStatus: true,
-        taskPriority: true,
-        taskType: true,
-        assignedTo: true,
-      },
+      include: { taskStatus: true, taskPriority: true, taskType: true, assignedTo: true },
       orderBy: { createdOn: 'desc' },
     });
-
-    // Transform data for easier Frontend use
-    return tasks.map((task) => ({
+    return tasks.map(task => ({
       id: task.id,
       summary: task.summary,
       description: task.description,
       projectId: task.projectId,
-      // Flatten relations
+      dueDate: task.dueDate,
       status: task.taskStatus?.status || 'Unknown',
       priority: task.taskPriority?.priority || 'Medium',
       type: task.taskType?.type || 'Task',
       assignedTo: task.assignedTo?.name || 'Unassigned',
     }));
+  }
+
+  async update(id: number, userId: number, data: UpdateProjectDto) {
+    return this.prisma.project.update({
+      where: { id },
+      data: {
+        title: data.title,
+        description: data.description,
+
+        updatedBy: {
+          connect: { id: userId }
+        },
+
+        updatedOn: new Date(),
+      },
+    });
+  }
+
+  async remove(id: number) {
+    return this.prisma.project.delete({ where: { id } });
   }
 }

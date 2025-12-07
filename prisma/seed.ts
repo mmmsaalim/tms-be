@@ -82,7 +82,6 @@ async function main() {
     }
   });
 
-
   await prisma.task.createMany({
     data: [
       {

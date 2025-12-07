@@ -1,11 +1,25 @@
-// src/auth/auth.dto.ts
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+
 export class LoginDto {
+  @IsEmail()
+  @IsNotEmpty()
   email!: string;
+
+  @IsString()
+  @IsNotEmpty()
   password!: string;
 }
 
 export class RegisterDto {
-  name!: string;      // New field required by your Schema
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @IsEmail()
+  @IsNotEmpty()
   email!: string;
+
+  @IsString()
+  @IsNotEmpty()
   password!: string;
 }
