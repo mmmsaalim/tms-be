@@ -6,7 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { jwtConstants } from './constants';
 import { JwtStrategy } from './jwt.strategy';
-import { PrismaService } from '../prisma.service'; // <--- 1. IMPORT THIS (Check your path!)
+import { PrismaService } from '../prisma.service'; 
 
 @Module({
   imports: [
@@ -21,7 +21,7 @@ import { PrismaService } from '../prisma.service'; // <--- 1. IMPORT THIS (Check
   providers: [
     AuthService, 
     JwtStrategy, 
-    PrismaService // <--- 2. ADD THIS HERE
+    PrismaService 
   ], 
   exports: [AuthService],
 })

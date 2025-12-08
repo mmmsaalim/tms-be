@@ -12,6 +12,6 @@ async function bootstrap() {
   });
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
   await app.listen(3000);
-  console.log('Backend is running on http://localhost:3000');
+ // console.log('Backend is running on http://localhost:3000');
 }
 bootstrap();
