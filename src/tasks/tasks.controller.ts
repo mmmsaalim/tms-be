@@ -1,27 +1,31 @@
-import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Req, ParseIntPipe, Patch } from '@nestjs/common';
 import { TasksService } from './tasks.service';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { CreateTaskDto } from './dto/create-task.dto'; 
+import { UpdateTaskDto } from './dto/update-task.dto'; 
 
 @Controller('tasks')
+@UseGuards(JwtAuthGuard)
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
-
-  @Get()
-  findAll() {
-    return this.tasksService.findAll();
-  }
+  constructor(private readonly tasksService: TasksService) { }
 
   @Post()
-  create(@Body() body: any) {
-    return this.tasksService.create(body);
+  createtask(@Req() req, @Body() createTaskDto: CreateTaskDto) {
+    return this.tasksService.create(req.user.userId, createTaskDto);
   }
 
-  @Put(':id')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.tasksService.update(+id, body);
+  @Patch(':id')
+  updatetask(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateTaskDto: UpdateTaskDto,
+    @Req() req
+  ) {
+    const userId = req.user.userId;
+    return this.tasksService.update(id, userId, updateTaskDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.tasksService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.tasksService.remove(id);
   }
 }
