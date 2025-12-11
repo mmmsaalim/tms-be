@@ -79,7 +79,7 @@ model ProjectUser {
   createdOn   DateTime @default(now()) @map("created_on")
   updatedOn   DateTime @updatedAt @map("updated_on")
 
-  project     Project     @relation(fields: [projectId], references: [id])
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id])
   role        ProjectRole @relation(fields: [roleId], references: [id])
 
@@ -137,7 +137,7 @@ model Task {
   updatedOn    DateTime @updatedAt @map("updated_on")
 
   // Relations
-  project      Project      @relation(fields: [projectId], references: [id])
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   taskType     TaskType     @relation(fields: [typeId], references: [id])
   taskPriority TaskPriority @relation(fields: [priorityId], references: [id])
   taskStatus   TaskStatus   @relation(fields: [statusId], references: [id])

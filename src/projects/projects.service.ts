@@ -45,6 +45,7 @@ export class ProjectsService {
       priority: task.taskPriority?.priority || 'Medium',
       type: task.taskType?.type || 'Task',
       assignedTo: task.assignedTo?.name || 'Unassigned',
+      updatedon:task.updatedOn,
     }));
   }
 
