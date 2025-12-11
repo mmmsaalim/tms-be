@@ -5,7 +5,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 
 @Injectable()
 export class TasksService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async create(userId: number, data: CreateTaskDto) {
     const newTask = await this.prisma.task.create({
@@ -18,7 +18,6 @@ export class TasksService {
         priorityId: data.priorityId || 2,
         statusId: data.statusId || 1,
         assignedToId: data.assignedToId || null,
-        
         createdById: userId,
       },
     });
@@ -37,18 +36,34 @@ export class TasksService {
           priorityId: data.priorityId,
           statusId: data.statusId,
           assignedToId: data.assignedToId,
-          
-          updatedById: userId, 
-          updatedOn: new Date(), 
+
+          updatedById: userId,
+          updatedOn: new Date(),
         },
       });
       return { message: "Task updated successfully" };
     } catch (error) {
-      console.error(error); 
+      console.error(error);
       throw new InternalServerErrorException("Failed to update task");
     }
   }
 
   async remove(id: number) {
+    try {
+      const deleted = await this.prisma.task.delete({
+        where: { id },
+      });
+
+      return { message: "Task deleted successfully", deleted };
+    } catch (error) {
+      console.error(error);
+
+      if (error.code === 'P2025') {
+        throw new NotFoundException("Task not found");
+      }
+
+      throw new InternalServerErrorException("Failed to delete task");
+    }
   }
+
 }
