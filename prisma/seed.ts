@@ -26,9 +26,9 @@ async function main() {
   await prisma.taskStatus.createMany({
     data: [
       { status: 'To Do' },
-      { status: 'In Progress' }, 
+      { status: 'In Progress' },
       { status: 'Blocked' },
-      { status: 'Done' }         
+      { status: 'Done' }
     ],
     skipDuplicates: true,
   });
@@ -60,6 +60,45 @@ async function main() {
       password: hashedPassword1,
       status: 1,
     },
+  });
+
+  // 3. Seed Multiple Users
+  const commonPassword = await bcrypt.hash('user@123', 10);
+
+  await prisma.user.createMany({
+    data: [
+      {
+        name: 'User One',
+        email: 'user1@gmail.com',
+        password: commonPassword,
+        status: 1,
+      },
+      {
+        name: 'User Two',
+        email: 'user2@gmail.com',
+        password: commonPassword,
+        status: 1,
+      },
+      {
+        name: 'User Three',
+        email: 'user3@gmail.com',
+        password: commonPassword,
+        status: 1,
+      },
+      {
+        name: 'User Four',
+        email: 'user4@gmail.com',
+        password: commonPassword,
+        status: 1,
+      },
+      {
+        name: 'User Five',
+        email: 'user5@gmail.com',
+        password: commonPassword,
+        status: 1,
+      },
+    ],
+    skipDuplicates: true,
   });
 
   const p1 = await prisma.project.create({

@@ -80,7 +80,7 @@ model ProjectUser {
   updatedOn   DateTime @updatedAt @map("updated_on")
 
   project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id])
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   role        ProjectRole @relation(fields: [roleId], references: [id])
 
   @@map("project_users")
