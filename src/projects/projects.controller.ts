@@ -15,8 +15,36 @@ export class ProjectsController {
   }
 
   @Get()
-  findAll() {
-    return this.projectsService.findAll();
+  findAll(@Req() req) {
+    return this.projectsService.findAll(req.user.userId);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    return this.projectsService.findOne(id, req.user.userId);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateProjectDto: UpdateProjectDto,
+    @Req() req
+  ) {
+    return this.projectsService.update(id, req.user.userId, updateProjectDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    return this.projectsService.remove(id, req.user.userId);
+  }
+
+  @Post(':id/members')
+  addMember(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { email: string; roleId: number },
+    @Req() req
+  ) {
+    return this.projectsService.addMember(id, body.email, body.roleId, req.user.userId);
   }
 
   @Get(':id/tasks')
@@ -24,20 +52,8 @@ export class ProjectsController {
     return this.projectsService.getTasksByProject(id);
   }
 
-  @Patch(':id')
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateProjectDto: UpdateProjectDto,
-    @Req() req
-  ) {
-    const userId = req.user.userId;
-    const project = await this.projectsService.update(id, userId, updateProjectDto);
-    return { message: "Project updated successfully", project };
-  }
-
-  @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.projectsService.remove(id);
-    return { message: "Project deleted successfully" };
+  @Get(':id/users')
+  getProjectUsers(@Param('id', ParseIntPipe) id: number) {
+    return this.projectsService.getProjectUsers(id);
   }
 }

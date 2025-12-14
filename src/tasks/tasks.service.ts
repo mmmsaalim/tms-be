@@ -8,6 +8,27 @@ export class TasksService {
   constructor(private prisma: PrismaService) { }
 
   async create(userId: number, data: CreateTaskDto) {
+
+    if (data.assignedToId) {
+      const isMember = await this.prisma.projectUser.findFirst({
+        where: {
+          projectId: data.projectId,
+          userId: Number(data.assignedToId),
+        },
+      });
+
+      if (!isMember) {
+        await this.prisma.projectUser.create({
+          data: {
+            projectId: data.projectId,
+            userId: Number(data.assignedToId),
+            roleId: 2,
+          },
+        });
+        console.log(`User ${data.assignedToId} automatically added to Project ${data.projectId}`);
+      }
+    }
+
     const newTask = await this.prisma.task.create({
       data: {
         summary: data.summary,
