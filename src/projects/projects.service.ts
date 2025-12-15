@@ -20,7 +20,6 @@ export class ProjectsService {
         },
       });
 
-      // Automatically add creator as Admin
       await tx.projectUser.create({
         data: { projectId: project.id, userId: userId, roleId: 1 },
       });
@@ -104,21 +103,39 @@ export class ProjectsService {
     return this.prisma.$transaction(async (tx) => {
 
       if (data.projectOwnerId) {
-        const newOwnerMember = await tx.projectUser.findFirst({
-          where: { projectId: id, userId: data.projectOwnerId }
-        });
+        const currentProject = await tx.project.findUnique({ where: { id } });
 
-        if (newOwnerMember) {
-          if (newOwnerMember.roleId !== 1) {
+        if (!currentProject) {
+          throw new NotFoundException('Project not found');
+        }
+
+        if (currentProject.projectOwnerId !== data.projectOwnerId) {
+
+          const newOwnerMember = await tx.projectUser.findFirst({
+            where: { projectId: id, userId: data.projectOwnerId }
+          });
+
+          if (newOwnerMember) {
             await tx.projectUser.update({
               where: { id: newOwnerMember.id },
               data: { roleId: 1 }
             });
+          } else {
+            await tx.projectUser.create({
+              data: { projectId: id, userId: data.projectOwnerId, roleId: 1 }
+            });
           }
-        } else {
-          await tx.projectUser.create({
-            data: { projectId: id, userId: data.projectOwnerId, roleId: 1 }
+
+          const oldOwnerMember = await tx.projectUser.findFirst({
+            where: { projectId: id, userId: currentProject.projectOwnerId }
           });
+
+          if (oldOwnerMember) {
+            await tx.projectUser.update({
+              where: { id: oldOwnerMember.id },
+              data: { roleId: 2 }
+            });
+          }
         }
       }
 
