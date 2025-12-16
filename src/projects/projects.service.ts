@@ -5,17 +5,20 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
-  // 1. Create Project
   async create(userId: number, data: CreateProjectDto) {
     return this.prisma.$transaction(async (tx) => {
+      
+      // Determine the Owner (Default to Creator if not selected)
+      const ownerId = data.projectOwnerId ? data.projectOwnerId : userId;
+
       const project = await tx.project.create({
         data: {
           title: data.title,
           description: data.description,
-          projectOwnerId: userId,
-          createdById: userId,
+          projectOwnerId: ownerId,
+          createdById: userId,    
           status: data.status !== undefined ? data.status : 1,
         },
       });
@@ -24,11 +27,22 @@ export class ProjectsService {
         data: { projectId: project.id, userId: userId, roleId: 1 },
       });
 
+      if (ownerId !== userId) {
+        const exists = await tx.projectUser.findFirst({
+            where: { projectId: project.id, userId: ownerId }
+        });
+        
+        if (!exists) {
+            await tx.projectUser.create({
+                data: { projectId: project.id, userId: ownerId, roleId: 3 }, 
+            });
+        }
+      }
+
       return project;
     });
   }
 
-  // 2. Find All
   async findAll(userId: number) {
     const projects = await this.prisma.project.findMany({
       where: {
@@ -37,23 +51,28 @@ export class ProjectsService {
       orderBy: { createdOn: 'desc' },
       include: {
         _count: { select: { tasks: true } },
-        members: {
-          where: { userId: userId },
-          select: { roleId: true }
+        members: { 
+           where: { userId: userId },
+           select: { roleId: true }
+        },
+        owner: {
+            select: { id: true, name: true }
         }
       }
     });
 
     return projects.map(p => ({
-      ...p,
-      currentUserRole: p.members[0]?.roleId || 3
+        ...p,
+        currentUserRole: p.members[0]?.roleId || 3
     }));
   }
 
-  // 3. Find One
   async findOne(id: number, userId: number) {
     const project = await this.prisma.project.findUnique({
       where: { id },
+      include: {
+        owner: { select: { id: true, name: true } }
+      }
     });
 
     if (!project) throw new NotFoundException('Project not found');
@@ -67,7 +86,43 @@ export class ProjectsService {
     return { ...project, currentUserRole: membership.roleId };
   }
 
-  // 4. Add Member
+  async update(id: number, userId: number, data: UpdateProjectDto) {
+    const membership = await this.prisma.projectUser.findFirst({
+      where: { projectId: id, userId }
+    });
+
+    if (!membership || membership.roleId !== 1) {
+      throw new ForbiddenException('Only Admins can update project details');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      
+      if (data.projectOwnerId) {
+        const newOwnerMember = await tx.projectUser.findFirst({
+            where: { projectId: id, userId: data.projectOwnerId }
+        });
+
+        if (!newOwnerMember) {
+            await tx.projectUser.create({
+                data: { projectId: id, userId: data.projectOwnerId, roleId: 3 }
+            });
+        }
+      }
+
+      return tx.project.update({
+        where: { id },
+        data: {
+          title: data.title,
+          description: data.description,
+          status: data.status,
+          projectOwnerId: data.projectOwnerId, 
+          updatedById: userId, 
+          updatedOn: new Date(),
+        },
+      });
+    });
+  }
+
   async addMember(projectId: number, email: string, roleId: number, currentUserId: number) {
     const membership = await this.prisma.projectUser.findFirst({
       where: { projectId, userId: currentUserId }
@@ -91,77 +146,13 @@ export class ProjectsService {
     });
   }
 
-  async update(id: number, userId: number, data: UpdateProjectDto) {
-    const membership = await this.prisma.projectUser.findFirst({
-      where: { projectId: id, userId }
-    });
-
-    if (!membership || membership.roleId !== 1) {
-      throw new ForbiddenException('Only Admins can update project details');
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-
-      if (data.projectOwnerId) {
-        const currentProject = await tx.project.findUnique({ where: { id } });
-
-        if (!currentProject) {
-          throw new NotFoundException('Project not found');
-        }
-
-        if (currentProject.projectOwnerId !== data.projectOwnerId) {
-
-          const newOwnerMember = await tx.projectUser.findFirst({
-            where: { projectId: id, userId: data.projectOwnerId }
-          });
-
-          if (newOwnerMember) {
-            await tx.projectUser.update({
-              where: { id: newOwnerMember.id },
-              data: { roleId: 1 }
-            });
-          } else {
-            await tx.projectUser.create({
-              data: { projectId: id, userId: data.projectOwnerId, roleId: 1 }
-            });
-          }
-
-          const oldOwnerMember = await tx.projectUser.findFirst({
-            where: { projectId: id, userId: currentProject.projectOwnerId }
-          });
-
-          if (oldOwnerMember) {
-            await tx.projectUser.update({
-              where: { id: oldOwnerMember.id },
-              data: { roleId: 2 }
-            });
-          }
-        }
-      }
-
-      return tx.project.update({
-        where: { id },
-        data: {
-          title: data.title,
-          description: data.description,
-          status: data.status,
-          projectOwnerId: data.projectOwnerId,
-          updatedById: userId,
-          updatedOn: new Date(),
-        },
-      });
-    });
-  }
-
   async remove(id: number, userId: number) {
     const membership = await this.prisma.projectUser.findFirst({
       where: { projectId: id, userId }
     });
-
     if (!membership || membership.roleId !== 1) {
       throw new ForbiddenException('Only Admins can delete projects');
     }
-
     return this.prisma.project.delete({ where: { id } });
   }
 
@@ -190,13 +181,7 @@ export class ProjectsService {
     return this.prisma.projectUser.findMany({
       where: { projectId: projectId },
       select: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
+        user: { select: { id: true, name: true, email: true } }
       }
     });
   }
